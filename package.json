@@ -1,0 +1,19 @@
+{
+  "name": "simple-ftpd",
+  "version": "0.0.1",
+  "description": "A simple ftpd",
+  "author": "Henrik Olsson <henrik@fixme.se>",
+  "devDependencies": {
+    "chai": "^3.4.1",
+    "jshint": "^2.8.0",
+    "mocha": "^2.3.4",
+    "sinon": "^1.17.2"
+  },
+  "scripts": {
+    "lint": "./node_modules/jshint/bin/jshint src/",
+    "test": "./node_modules/mocha/bin/mocha"
+  },
+  "dependencies": {
+    "winston": "^2.1.1"
+  }
+}
