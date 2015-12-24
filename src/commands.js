@@ -20,7 +20,11 @@ module.exports = {
   },
   "PWD": {
     handler: function(client) {
-      return "257 \"" + client.pwd.substring(client.user.root.length - 1) + "\"";
+      var pwd = client.pwd.substring(client.user.root.length);
+      if (pwd == "") {
+        pwd = "/";
+      }
+      return "257 \"" +  pwd + "\"";
     },
     parameters: 0
   },
@@ -54,11 +58,33 @@ module.exports = {
     handler: cwdHandler,
     parameters: 1
   },
+  "CDUP": {
+    handler: function(client) {
+      cwdHandler(client, "CWD", "..");
+    },
+    parameters: 0
+  },
   "RETR": {
     handler: retrHandler,
     parameters: 1
+  },
+  "PROT": {
+    handler: protHandler,
+    parameters: 1
+  },
+  "PBSZ": {
+    handler: function() {
+      // Pretend for now..
+      return "200 Command okay.";
+    },
+    parameters: 1
   }
 };
+
+function protHandler(client, command, type) {
+  client.protectionLevel = type;
+  return "200 Command okay.";
+}
 
 function retrHandler(client, command, file) {
   client.send("150 Here comes the file.");
@@ -75,7 +101,7 @@ function retrHandler(client, command, file) {
 }
 
 function sanitizeAbsolutePath(client, p) {
-  p = path.normalize(client.user.root + "/" + p);
+  p = path.normalize(client.pwd + "/" + p);
   return Promise.join(new Promise(function(resolve, reject) {
     if (!p.startsWith(client.user.root)) {
       reject("Illegal path");
@@ -159,7 +185,7 @@ function passHandler(client, command, password) {
 }
 
 function pasvHandler(client) {
-  var passiveHandler = passive.allocatePassivePort();
+  var passiveHandler = passive.allocatePassivePort(client);
   if (passiveHandler === null) {
     winston.warn("Unable to allocate passive port");
     client.doClose = true;

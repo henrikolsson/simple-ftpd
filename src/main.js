@@ -10,12 +10,10 @@ function main() {
                                            'prettyPrint': true,
                                            'colorize': true});
 
-  // Ensure trailing slash on all roots
+  // Remove trailing slash from all roots
   for (var i=0;i<config.users.length;i++) {
     if (config.users[i].root.endsWith("/")) {
-      if (!config.users[i].root.endsWith("/")) {
-        config.users[i].root = config.users[i].root + "/";
-      }
+      config.users[i].root = config.users[i].root.replace(/\/$/, "");
     }
   }
 

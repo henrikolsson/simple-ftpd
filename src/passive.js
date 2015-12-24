@@ -3,6 +3,8 @@ var config = require('./config');
 var passivePorts = [];
 var winston = require('winston');
 var Promise = require("bluebird");
+var fs = require('fs');
+var tls = require('tls');
 
 function applyQueue(queue, client) {
   var l = queue.length;
@@ -15,30 +17,12 @@ function applyQueue(queue, client) {
   return l > 0;
 }
 
-// FIXME: This could should be cleaned up
-function createPassiveHandler(port) {
-  var queue = [];
+function getSocketHandler() {
   var client = null;
-  var server = net.createServer(function(socket) {
-    client = socket;
-
-    winston.info("passive client connected");
-    if (applyQueue(queue, client)) {
-      freePassiveHandler(port, server);
-    }
-
-    socket.on('data', function (data) {
-      var s = data.toString().trim();
-      console.log(s);
-    });
-
-    socket.on('end', function () {
-      winston.info("passive client disconnected");
-    });
-  }).listen(port);
-
-  var handler = {
-    use: function(data) {
+  var queue = [];
+  return {
+    send: function(data) {
+      winston.info("sending... client: " + client);
       var promise = new Promise(function(resolve, reject) {
         queue.push({data: data,
                     resolve: resolve,
@@ -46,9 +30,50 @@ function createPassiveHandler(port) {
       });
       if (client !== null) {
         applyQueue(queue, client);
-        freePassiveHandler(port, server);
+        //freePassiveHandler(port, server);
       }
       return promise;
+    },
+    handler: function(socket) {
+      client = socket;
+
+      winston.info("passive client connected");
+      if (applyQueue(queue, client)) {
+        //freePassiveHandler(port, server);
+      }
+
+      socket.on('data', function (data) {
+        var s = data.toString().trim();
+        console.log(s);
+      });
+
+      socket.on('end', function () {
+        winston.info("passive client disconnected");
+      });
+    }
+  };
+};
+
+// FIXME: This could should be cleaned up
+function createPassiveHandler(client, port) {
+  var server;
+  var protectionLevel = client.protectionLevel || 'C';
+
+  var socketHandler = getSocketHandler();
+    if (protectionLevel == 'C') {
+    server = net.createServer(socketHandler.handler).listen(port);
+  } else {
+    // TODO: Can the rest of the levels be assumed to use TLS?
+    var options = {
+      key: fs.readFileSync(config.privateKeyFile),
+      cert: fs.readFileSync(config.certificateFile)
+    };
+    server = tls.createServer(options, socketHandler.handler).listen(port);
+  }
+
+  var handler = {
+    use: function(data) {
+      return socketHandler.send(data);
     },
     port: port
   };
@@ -61,13 +86,13 @@ module.exports.init = function() {
   }
 };
 
-module.exports.allocatePassivePort = function() {
+module.exports.allocatePassivePort = function(client) {
   for (var i=0;i<passivePorts.length;i++) {
     if (passivePorts[i].state === "FREE") {
       passivePorts[i].state = "IN_USE";
       var p = passivePorts[i].port;
       winston.info("allocating passive port: " + p);
-      return createPassiveHandler(p);
+      return createPassiveHandler(client, p);
     }
   }
   return null;
