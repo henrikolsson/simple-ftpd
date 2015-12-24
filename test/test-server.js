@@ -9,21 +9,17 @@ before(function() {
 describe('server', function() {
   it('should not allow authenticated commands without authentication', function() {
     var client = {state: "CONNECTED",
-                  socket: {
-                    write: sinon.spy()
-                  }};
+                  send: sinon.spy()};
     server.handleCommand(client, "PASV");
-    assert.isTrue(client.socket.write.calledOnce);
-    assert.strictEqual(client.socket.write.firstCall.args[0], "530 Not logged in.\r\n");
+    assert.isTrue(client.send.calledOnce);
+    assert.strictEqual(client.send.firstCall.args[0], "530 Not logged in.");
   });
 
   it('should verify number of parameters required', function() {
     var client = {state: "CONNECTED",
-                  socket: {
-                    write: sinon.spy()
-                  }};
+                  send: sinon.spy()};
     server.handleCommand(client, "USER");
-    assert.isTrue(client.socket.write.calledOnce);
-    assert.strictEqual(client.socket.write.firstCall.args[0], "501 Syntax error in parameters or arguments.\r\n");
+    assert.isTrue(client.send.calledOnce);
+    assert.strictEqual(client.send.firstCall.args[0], "501 Syntax error in parameters or arguments.");
   });
 });

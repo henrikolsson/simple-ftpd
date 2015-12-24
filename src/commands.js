@@ -2,6 +2,10 @@ var config = require('./config');
 var passive = require('./passive');
 var users = require('./users');
 var winston = require('winston');
+var path = require('path');
+var sprintf = require("sprintf-js").sprintf;
+var Promise = require("bluebird");
+var fs = Promise.promisifyAll(require("fs"));
 
 module.exports = {
   "USER": {
@@ -16,7 +20,7 @@ module.exports = {
   },
   "PWD": {
     handler: function(client) {
-      return "257 \"" + client.pwd + "\"";
+      return "257 \"" + client.pwd.substring(client.user.root.length - 1) + "\"";
     },
     parameters: 0
   },
@@ -45,18 +49,91 @@ module.exports = {
   "TYPE": {
     handler: typeHandler,
     parameters: 1
+  },
+  "CWD": {
+    handler: cwdHandler,
+    parameters: 1
+  },
+  "RETR": {
+    handler: retrHandler,
+    parameters: 1
   }
 };
+
+function retrHandler(client, command, file) {
+  client.send("150 Here comes the file.");
+  fs.readFileAsync(client.pwd + "/" + file).then(function(data) {
+    client.passiveHandler.use(data).then(function() {
+      client.send("226 File sent.");
+    });
+  }).catch(function(error) {
+    winston.error("failed to send file", error);
+    client.passiveHandler.use("").then(function() {
+      client.send("451 Requested action aborted: local error in processing.");
+    });
+  });
+}
+
+function sanitizeAbsolutePath(client, p) {
+  p = path.normalize(client.user.root + "/" + p);
+  return Promise.join(new Promise(function(resolve, reject) {
+    if (!p.startsWith(client.user.root)) {
+      reject("Illegal path");
+    } else {
+      resolve(p);
+    }
+  }), fs.statAsync(p));
+}
+
+function cwdHandler(client, command, p) {
+  var sanitized = sanitizeAbsolutePath(client, p);
+  sanitized.then(function(args) {
+    var path = args[0];
+    var stats = args[1];
+    if (stats.isDirectory()) {
+      client.pwd = path;
+      client.send("250 CWD successful");
+    } else {
+      throw new Error("Not a directory");
+    }
+  }).catch(function(err) {
+    winston.error("CWD Failed", err);
+    client.send("550 Illegal directory");
+  });
+}
 
 function typeHandler(client, command, type) {
   return "200 Command okay.";
 }
 
 function listHandler(client) {
-  // FIXME: This is bad.
+  // FIXME: This is ugly.
   client.send("150 Here comes the directory listing.");
-  client.passiveHandler.use("drwx------    2 1000     1000           79 Dec 24 13:01 foo\r\ndrwx------    2 1001     1001           59 Dec 24 13:11 bar\r\n", function() {
-    client.send("226 Directory send OK..");
+  fs.readdirAsync(client.pwd).map(function(fileName) {
+    var stat = fs.statAsync(client.pwd + "/" + fileName);
+    return Promise.join(stat, function(stat) {
+      return {filename: fileName,
+              stat: stat};
+    });
+  }).then(function(files) {
+    var s = "";
+    for (var i=0;i<files.length;i++) {
+      var line = sprintf("%s   1 %-10s %-10s %10d Jan  1  1980 %s\r\n",
+                         (files[i].stat.isDirectory() ? "d" : "-") + "rw-rw-rw-",
+                         "nobody",
+                         "nobody",
+                         files[i].stat.size,
+                         files[i].filename);
+      s = s + line;
+    }
+    client.passiveHandler.use(s).then(function() {
+      client.send("226 Directory send OK.");
+    });
+  }).catch(function(error) {
+    winston.error("failed to list", error);
+    client.passiveHandler.use("").then(function() {
+      client.send("451 Requested action aborted: local error in processing.");
+    });
   });
 }
 
@@ -65,6 +142,7 @@ function userHandler(client, command, username) {
   if (user !== null) {
     client.state = "AUTHENTICATING";
     client.user = user;
+    client.pwd = user.root;
     return "331 User name okay, need password.";
   } else {
     return "530 Not logged in.";

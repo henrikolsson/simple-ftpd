@@ -42,7 +42,7 @@ module.exports.start = function() {
     var client = {"socket": socket,
                   state: "CONNECTED",
                   id: id,
-                  pwd: "/",
+                  pwd: null,
                   send: function send(message) {
                     winston.info("(" + util.clientInfo(client) + ") --> " + message);
                     this.socket.write(message + "\r\n");
@@ -59,9 +59,9 @@ module.exports.start = function() {
 
     socket.on('end', function () {
       winston.info("client disconnected: " + util.clientInfo(client));
-      if (client.passiveHandler) {
-        passive.freePassiveHandler(client.passiveHandler);
-      }
+      // FIXME: this isn't working right now
+      //passive.freePassiveHandler(client.passiveHandler.port,
+      //                           client.passiveHandler.server);
       clients.splice(clients.indexOf(client), 1);
     });
 

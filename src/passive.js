@@ -2,6 +2,7 @@ var net = require('net');
 var config = require('./config');
 var passivePorts = [];
 var winston = require('winston');
+var Promise = require("bluebird");
 
 function applyQueue(queue, client) {
   var l = queue.length;
@@ -9,7 +10,7 @@ function applyQueue(queue, client) {
     queued = queue[i];
     client.write(queued.data);
     client.end();
-    queued.cb();
+    queued.resolve();
   }
   return l > 0;
 }
@@ -36,17 +37,22 @@ function createPassiveHandler(port) {
     });
   }).listen(port);
 
-  return {
-    use: function(data, cb) {
-      queue.push({data: data,
-                  cb: cb});
-      if (client != null) {
+  var handler = {
+    use: function(data) {
+      var promise = new Promise(function(resolve, reject) {
+        queue.push({data: data,
+                    resolve: resolve,
+                    reject: reject});
+      });
+      if (client !== null) {
         applyQueue(queue, client);
         freePassiveHandler(port, server);
       }
+      return promise;
     },
     port: port
   };
+  return handler;
 }
 
 module.exports.init = function() {
@@ -73,7 +79,8 @@ function freePassiveHandler(port, server) {
   for (var i=0;i<passivePorts.length;i++) {
     if (passivePorts[i].port === port) {
       if (passivePorts[i].state !== "IN_USE") {
-        throw new Exception("Expected passive port: " + port + " to be in use, but was: " + passivePorts[i].state);
+        throw new Error("Expected passive port: " + port +
+                        " to be in use, but was: " + passivePorts[i].state);
       }
       passivePorts[i].state = "FREE";
       winston.info("closing passive: " + port);
@@ -81,6 +88,6 @@ function freePassiveHandler(port, server) {
       return;
     }
   }
-  throw new Exception("Undefined passive port: " + port);
+  throw new Error("Undefined passive port: " + port);
 }
 
