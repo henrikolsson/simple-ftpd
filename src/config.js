@@ -1,5 +1,5 @@
 "use strict";
-var Netmask = require('netmask').Netmask
+var Netmask = require('netmask').Netmask;
 
 module.exports = {
   port: 2521,
