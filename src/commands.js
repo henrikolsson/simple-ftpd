@@ -102,7 +102,7 @@ function retrHandler(client, command, file) {
 }
 
 function sanitizeAbsolutePath(client, p) {
-  if (/\/$/.test(p)) {
+  if (/^\//.test(p)) {
     p = path.normalize(p);
   } else {
     p = path.normalize(client.pwd + "/" + p);
