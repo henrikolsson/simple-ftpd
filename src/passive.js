@@ -1,12 +1,13 @@
 var net = require('net');
 var config = require('./config');
 var passivePorts = [];
-var winston = require('winston');
+var logger = require('./logger');
 var Promise = require("bluebird");
 var fs = require('fs');
 var tls = require('tls');
 
 function applyQueue(queue, client) {
+  logger.info("sending... client: " + client);
   var l = queue.length;
   for (var i=0;i<l;i++) {
     queued = queue[i];
@@ -22,7 +23,6 @@ function getSocketHandler() {
   var queue = [];
   return {
     send: function(data) {
-      winston.info("sending... client: " + client);
       var promise = new Promise(function(resolve, reject) {
         queue.push({data: data,
                     resolve: resolve,
@@ -37,7 +37,7 @@ function getSocketHandler() {
     handler: function(socket) {
       client = socket;
 
-      winston.info("passive client connected");
+      logger.info("passive client connected");
       if (applyQueue(queue, client)) {
         //freePassiveHandler(port, server);
       }
@@ -48,7 +48,7 @@ function getSocketHandler() {
       });
 
       socket.on('end', function () {
-        winston.info("passive client disconnected");
+        logger.info("passive client disconnected");
       });
     }
   };
@@ -65,8 +65,8 @@ function createPassiveHandler(client, port) {
   } else {
     // TODO: Can the rest of the levels be assumed to use TLS?
     var options = {
-      key: fs.readFileSync(config.privateKeyFile),
-      cert: fs.readFileSync(config.certificateFile)
+      key: config.privateKeyFile,
+      cert: config.certificateFile
     };
     server = tls.createServer(options, socketHandler.handler).listen(port);
   }
@@ -91,7 +91,7 @@ module.exports.allocatePassivePort = function(client) {
     if (passivePorts[i].state === "FREE") {
       passivePorts[i].state = "IN_USE";
       var p = passivePorts[i].port;
-      winston.info("allocating passive port: " + p);
+      logger.info("allocating passive port: " + p);
       return createPassiveHandler(client, p);
     }
   }
@@ -108,7 +108,7 @@ function freePassiveHandler(port, server) {
                         " to be in use, but was: " + passivePorts[i].state);
       }
       passivePorts[i].state = "FREE";
-      winston.info("closing passive: " + port);
+      logger.info("closing passive: " + port);
       server.close();
       return;
     }

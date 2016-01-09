@@ -1,24 +1,27 @@
 var config = require('./config');
 var server = require('./server');
 var passive = require('./passive');
-var winston = require('winston');
+var logger = require('./logger');
+var chroot = require('chroot');
+var fs = require('fs');
 
 function main() {
-  winston.remove(winston.transports.Console);
-  winston.add(winston.transports.Console, {'timestamp':true,
-                                           'level': 'debug',
-                                           'prettyPrint': true,
-                                           'colorize': true});
+  process.on('uncaughtException', function(err) {
+    console.info("uncaught error", err)
+    process.exit(1);
+  })
 
-  // Remove trailing slash from all roots
-  for (var i=0;i<config.users.length;i++) {
-    if (config.users[i].root.endsWith("/")) {
-      config.users[i].root = config.users[i].root.replace(/\/$/, "");
-    }
+  logger.info("starting up...");
+  if (config.implicitTLS) {
+    config.privateKeyFile = fs.readFileSync(config.privateKeyFile);
+    config.certificateFile = fs.readFileSync(config.certificateFile);
   }
-
+  logger.info("initializing passive handler...");
   passive.init();
+  logger.info("starting server...");
   server.start();
-}
+  logger.info('dropping privileges and changing root to: ' + config.root);
+  chroot(config.root, config.user, config.group);
 
+}
 main();
