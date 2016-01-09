@@ -5,7 +5,7 @@ module.exports = {
   port: 2521,
   users: [{"username": "john",
            "password": "doe",
-           "source": new Netmask('127.0.0.2/32')}],
+           "source": new Netmask('127.0.0.1/32')}],
   root: "/srv/ftp/",
   user: 1000,
   group: 1000,

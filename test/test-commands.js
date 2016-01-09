@@ -4,7 +4,7 @@ var commands = require('../src/commands');
 
 describe('commands', function() {
   it('can verify correct username', function() {
-    var client = {};
+    var client = {address: '127.0.0.1'};
     var result = commands.userHandler(client, "USER", "john");
     assert.strictEqual(result, "331 User name okay, need password.");
     assert.strictEqual(client.state, "AUTHENTICATING");
