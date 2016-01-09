@@ -13,16 +13,19 @@ function main() {
   });
 
   logger.info("starting up...");
+
   if (config.implicitTLS) {
     config.privateKeyFile = fs.readFileSync(config.privateKeyFile);
     config.certificateFile = fs.readFileSync(config.certificateFile);
   }
+
   logger.info("initializing passive handler...");
   passive.init();
+
   logger.info("starting server...");
   server.start();
+
   logger.info('dropping privileges and changing root to: ' + config.root);
   chroot(config.root, config.user, config.group);
-
 }
 main();

@@ -167,13 +167,15 @@ function listHandler(client) {
 
 function userHandler(client, command, username) {
   var user = users.findUserByName(username);
-  if (user !== null) {
-    client.state = "AUTHENTICATING";
-    client.user = user;
-    return "331 User name okay, need password.";
-  } else {
+  if (user === null) {
     return "530 Not logged in.";
   }
+  if (user.source && !user.source.contains(client.address)) {
+    return "530 Not logged in.";
+  }
+  client.state = "AUTHENTICATING";
+  client.user = user;
+  return "331 User name okay, need password.";
 }
 
 function passHandler(client, command, password) {
