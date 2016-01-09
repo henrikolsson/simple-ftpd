@@ -1,3 +1,4 @@
+"use strict";
 var config = require('./config');
 var passive = require('./passive');
 var users = require('./users');
@@ -25,7 +26,7 @@ module.exports = {
     parameters: 0
   },
   "SYST": {
-    handler: function(client) {
+    handler: function() {
       return "215 UNIX Type: L8";
     },
     parameters: 0
@@ -86,20 +87,16 @@ function retrHandler(client, command, file) {
   client.send("150 Here comes the file.");
   sanitizeAbsolutePath(client, file).then(function(args) {
     var path = args[0];
-    fs.readFileAsync(path).then(function(data) {
-      client.passiveHandler.use(data).then(function() {
-        client.send("226 File sent.");
-      });
-    }).catch(function(error) {
-      logger.error("failed to send file", error);
-      client.passiveHandler.use("").then(function() {
-        client.send("451 Requested action aborted: local error in processing.");
-      });
+    var s = fs.createReadStream(path);
+    client.passiveHandler.pipe(s).then(function() {
+      client.send("226 File sent.");
     });
   }).catch(function(error) {
     logger.error("failed to send file", error);
     client.passiveHandler.use("").then(function() {
       client.send("451 Requested action aborted: local error in processing.");
+    }).catch(function(e) {
+      logger.error("failed to send file", e);
     });
   });
 }
@@ -110,7 +107,7 @@ function sanitizeAbsolutePath(client, p) {
   } else {
     p = path.normalize(client.pwd + "/" + p);
   }
-  return Promise.join(new Promise(function(resolve, reject) {
+  return Promise.join(new Promise(function(resolve) {
     resolve(p);
   }), fs.statAsync(p));
 }
@@ -133,7 +130,7 @@ function cwdHandler(client, command, p) {
   });
 }
 
-function typeHandler(client, command, type) {
+function typeHandler() {
   return "200 Command okay.";
 }
 
@@ -189,7 +186,7 @@ function passHandler(client, command, password) {
 }
 
 function pasvHandler(client) {
-  var passiveHandler = passive.allocatePassivePort(client);
+  var passiveHandler = new passive.PassiveHandler(client);
   if (passiveHandler === null) {
     logger.warn("Unable to allocate passive port");
     client.doClose = true;

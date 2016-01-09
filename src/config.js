@@ -1,3 +1,4 @@
+"use strict";
 module.exports = {
   port: 2521,
   users: [{"username": "john",

@@ -1,4 +1,4 @@
-var config = require('./config');
+"use strict";
 
 module.exports.clientInfo = function(client) {
   var s = client.id;

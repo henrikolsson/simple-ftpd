@@ -1,11 +1,10 @@
+"use strict";
 var net = require('net');
 var config = require('./config');
 var util = require('./util');
 var commands = require('./commands');
-var passive = require('./passive');
 var logger = require('./logger');
 var tls = require('tls');
-var fs = require('fs');
 
 var clients = [];
 var clientCounter = 0;
@@ -65,9 +64,9 @@ function socketHandler(socket) {
 
   socket.on('end', function () {
     logger.info("client disconnected: " + util.clientInfo(client));
-    // FIXME: this isn't working right now
-    //passive.freePassiveHandler(client.passiveHandler.port,
-    //                           client.passiveHandler.server);
+    if (client.passiveHandler) {
+      client.passiveHandler.end();
+    }
     clients.splice(clients.indexOf(client), 1);
   });
 }

@@ -1,3 +1,4 @@
+"use strict";
 var config = require('./config');
 var server = require('./server');
 var passive = require('./passive');
@@ -7,9 +8,9 @@ var fs = require('fs');
 
 function main() {
   process.on('uncaughtException', function(err) {
-    console.info("uncaught error", err)
+    console.info("uncaught error", err, err.stack.split("\n"));
     process.exit(1);
-  })
+  });
 
   logger.info("starting up...");
   if (config.implicitTLS) {

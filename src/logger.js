@@ -1,4 +1,6 @@
+"use strict";
 var winston = require('winston');
+var util = require('./util');
 
 winston.emitErrs = true;
 
@@ -17,8 +19,12 @@ var logger = new winston.Logger({
 });
 
 module.exports = logger;
+module.exports.clientInfo = function(client, s) {
+  return logger.info("(" + util.clientInfo(client) + ") --> " + s);
+};
+
 module.exports.stream = {
-  write: function(message, encoding){
+  write: function(message){
     logger.info(message);
   }
 };
