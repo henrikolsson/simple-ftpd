@@ -65,6 +65,22 @@ module.exports = {
     handler: retrHandler,
     parameters: 'varargs'
   },
+  "STOR": {
+    handler: storHandler,
+    parameters: 'varargs'
+  },
+  "MKD": {
+    handler: mkdirHandler,
+    parameters: 'varargs'
+  },
+  "DELE": {
+    handler: deleteHandler,
+    parameters: 'varargs'
+  },
+  "RMD": {
+    handler: deleteDirectoryHandler,
+    parameters: 'varargs'
+  },
   "PROT": {
     handler: protHandler,
     parameters: 1
@@ -82,13 +98,48 @@ function protHandler(client, command, type) {
   return "200 Command okay.";
 }
 
+function mkdirHandler(client, command, file) {
+  file = makeAbsolute(client, file.join(' '));
+  fs.mkdir(file, function(e) {
+    if (e) {
+      logger.error("mkdir failed", e);
+      client.send("550 Failed to create directory");
+    } else {
+      client.send("257 \"" + file + "\" created");
+    }
+  });
+}
+
+function deleteDirectoryHandler(client, command, file) {
+  file = makeAbsolute(client, file.join(' '));
+  fs.rmdir(file, function(e) {
+    if (e) {
+      logger.error("delete failed", e);
+      client.send("550 Failed to delete");
+    } else {
+      client.send("250 Deleted");
+    }
+  });
+}
+function deleteHandler(client, command, file) {
+  file = makeAbsolute(client, file.join(' '));
+  fs.unlink(file, function(e) {
+    if (e) {
+      logger.error("delete failed", e);
+      client.send("550 Failed to delete");
+    } else {
+      client.send("250 Deleted");
+    }
+  });
+}
+
 function retrHandler(client, command, file) {
   file = file.join(' ');
   client.send("150 Here comes the file.");
   sanitizeAbsolutePath(client, file).then(function(args) {
     var path = args[0];
     var s = fs.createReadStream(path);
-    client.passiveHandler.pipe(s).then(function() {
+    client.passiveHandler.pipeFrom(s).then(function() {
       client.send("226 File sent.");
     });
   }).catch(function(error) {
@@ -101,12 +152,25 @@ function retrHandler(client, command, file) {
   });
 }
 
-function sanitizeAbsolutePath(client, p) {
+function storHandler(client, command, file) {
+  file = makeAbsolute(client, file);
+  client.send("150 Do the needful");
+  var s = fs.createWriteStream(file);
+  client.passiveHandler.pipeTo(s).then(function() {
+    client.send("226 File retrieved.");
+  });
+}
+
+function makeAbsolute(client, p) {
   if (/^\//.test(p)) {
-    p = path.normalize(p);
+    return path.normalize(p);
   } else {
-    p = path.normalize(client.pwd + "/" + p);
+    return path.normalize(client.pwd + "/" + p);
   }
+}
+
+function sanitizeAbsolutePath(client, p) {
+  p = makeAbsolute(client, p);
   return Promise.join(new Promise(function(resolve) {
     resolve(p);
   }), fs.statAsync(p));

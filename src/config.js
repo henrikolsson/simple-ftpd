@@ -12,7 +12,7 @@ module.exports = {
   passiveIp: "192.168.70.2",
   passivePortMin: 2100,
   passivePortMax: 2110,
-  implicitTLS: true,
+  implicitTLS: false,
   privateKeyFile: 'private-key.pem',
   certificateFile: 'public-cert.pem'
 };
