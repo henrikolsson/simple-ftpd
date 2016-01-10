@@ -48,7 +48,7 @@ function socketHandler(socket) {
                 state: "CONNECTED",
                 id: id,
                 pwd: '/',
-                address: socket.address().address,
+                address: socket.remoteAddress,
                 send: function send(message) {
                   logger.info("(" + util.clientInfo(client) + ") --> " + message);
                   this.socket.write(message + "\r\n");
