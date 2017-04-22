@@ -5,6 +5,7 @@ var logger = require('./logger');
 var Promise = require("bluebird");
 var tls = require('tls');
 var stream = require('stream');
+var request = require('request');
 
 var passivePorts = [];
 
@@ -25,7 +26,7 @@ function PassiveHandler(client) {
   this.queue = [];
   this.freed = false;
   this.client = client;
-
+    
   var protectionLevel = client.protectionLevel || 'C';
 
   var self = this;
@@ -144,7 +145,22 @@ PassiveHandler.prototype.end = function() {
 module.exports.PassiveHandler = PassiveHandler;
 
 module.exports.init = function() {
-  for (var i=config.passivePortMin;i<=config.passivePortMax;i++) {
-    passivePorts.push({"port": i, "state": "FREE"});
-  }
+  return new Promise((resolve, reject) => {
+    for (var i=config.passivePortMin;i<=config.passivePortMax;i++) {
+      passivePorts.push({"port": i, "state": "FREE"});
+    }
+    if (!config.passiveIp) {
+      logger.info('Looking up passive ip externally...');
+      request('https://api.ipify.org', (error, response, body) => {
+        if (error) {
+          reject(error);
+        } else {
+          config.passiveIp = body;
+          resolve();
+        }
+      });
+    } else {
+      resolve();
+    }
+  });
 };

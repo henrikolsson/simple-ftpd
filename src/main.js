@@ -20,12 +20,13 @@ function main() {
   }
 
   logger.info("initializing passive handler...");
-  passive.init();
-
-  logger.info("starting server...");
-  server.start();
-
-  logger.info('dropping privileges and changing root to: ' + config.root);
-  chroot(config.root, config.user, config.group);
+  passive.init()
+         .then(() => {
+           logger.info("starting server...");
+           server.start();
+           logger.info('dropping privileges and changing root to: ' + config.root);
+           chroot(config.root, config.user, config.group)
+         });
 }
+
 main();
