@@ -145,13 +145,13 @@ PassiveHandler.prototype.end = function() {
 module.exports.PassiveHandler = PassiveHandler;
 
 module.exports.init = function() {
-  return new Promise((resolve, reject) => {
+  return new Promise(function (resolve, reject) {
     for (var i=config.passivePortMin;i<=config.passivePortMax;i++) {
       passivePorts.push({"port": i, "state": "FREE"});
     }
     if (!config.passiveIp) {
       logger.info('Looking up passive ip externally...');
-      request('https://api.ipify.org', (error, response, body) => {
+      request('https://api.ipify.org', function (error, response, body) {
         if (error) {
           reject(error);
         } else {

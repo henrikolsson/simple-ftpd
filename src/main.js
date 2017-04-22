@@ -21,7 +21,7 @@ function main() {
 
   logger.info("initializing passive handler...");
   passive.init()
-         .then(() => {
+         .then(function () {
            logger.info("starting server...");
            server.start();
            logger.info('dropping privileges and changing root to: ' + config.root);
